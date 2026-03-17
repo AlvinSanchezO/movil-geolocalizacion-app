@@ -1,98 +1,101 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import * as Location from 'expo-location'; // 1. Importamos la librería
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function App() {
+  const [latitud, setLatitud] = useState('');
+  const [longitud, setLongitud] = useState('');
+  const [cargando, setCargando] = useState(false);
 
-export default function HomeScreen() {
+  // 2. Función para obtener la ubicación del GPS
+  const obtenerUbicacionGPS = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert("Permiso denegado", "Necesitamos permiso para acceder al GPS");
+      return;
+    }
+
+    setCargando(true);
+    try {
+      let location = await Location.getCurrentPositionAsync({});
+      setLatitud(location.coords.latitude.toString());
+      setLongitud(location.coords.longitude.toString());
+      Alert.alert("Éxito", "Coordenadas obtenidas del GPS");
+    } catch (error) {
+      Alert.alert("Error", "No se pudo obtener la ubicación");
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const enviarUbicacion = async () => {
+    if (!latitud || !longitud) {
+      Alert.alert("Error", "Primero obtén o escribe las coordenadas");
+      return;
+    }
+
+    setCargando(true);
+    try {
+      const response = await fetch('http://192.168.100.12:8000/api-cesar/direccion/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          empleado: "http://192.168.100.12:8000/api-cesar/empleados/1/", 
+          latitud: latitud,
+          longitud: longitud,
+        }),
+      });
+
+      if (response.ok) {
+        Alert.alert("¡Éxito!", "Ubicación real guardada en el servidor");
+        setLatitud('');
+        setLongitud('');
+      } else {
+        Alert.alert("Error", "El servidor rechazó los datos");
+      }
+    } catch (error) {
+      Alert.alert("Error de Conexión", "Verifica tu servidor Django");
+    } finally {
+      setCargando(false);
+    }
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      <Text style={styles.titulo}>Módulo Direcciones</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <TouchableOpacity style={styles.botonGPS} onPress={obtenerUbicacionGPS}>
+        <Text style={styles.textoBoton}>Obtener Ubicación Real</Text>
+      </TouchableOpacity>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Latitud"
+        value={latitud}
+        onChangeText={setLatitud}
+        keyboardType="numeric"
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Longitud"
+        value={longitud}
+        onChangeText={setLongitud}
+        keyboardType="numeric"
+      />
+
+      <TouchableOpacity style={styles.boton} onPress={enviarUbicacion} disabled={cargando}>
+        {cargando ? <ActivityIndicator color="#fff" /> : <Text style={styles.textoBoton}>Enviar a Backend</Text>}
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flex: 1, backgroundColor: '#f5f5f5', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  titulo: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 30 },
+  input: { width: '100%', height: 50, backgroundColor: '#fff', borderRadius: 10, paddingHorizontal: 15, marginBottom: 15, borderWidth: 1, borderColor: '#ddd' },
+  botonGPS: { width: '100%', height: 50, backgroundColor: '#28a745', borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
+  boton: { width: '100%', height: 50, backgroundColor: '#007bff', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  textoBoton: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });
