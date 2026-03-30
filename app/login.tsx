@@ -2,17 +2,17 @@ import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 export default function LoginScreen() {
@@ -22,7 +22,6 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const handleLogin = async () => {
-    // 1. Validación de campos locales
     if (!username || !password) {
       Alert.alert("Campos requeridos", "Por favor ingresa tu usuario y contraseña.");
       return;
@@ -30,8 +29,6 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // 2. Petición al Backend de Django (Usando tu IPv4 de Tijuana)
-      // Nota: Asegúrate de que Django corra con: python manage.py runserver 0.0.0.0:8000
       const response = await fetch('http://192.168.100.12:8000/api/token/', {
         method: 'POST',
         headers: { 
@@ -46,27 +43,33 @@ export default function LoginScreen() {
       const data = await response.json();
 
       if (response.ok) {
-        // 3. PERSISTENCIA: Guardamos el token JWT en el almacenamiento seguro
-        // Esto es lo que nos permitirá enviar coordenadas después
+        // --- NUEVA LÓGICA DE ROLES ---
+        
+        // 1. Guardamos el Token de acceso
         await SecureStore.setItemAsync('userToken', data.access);
         
-        console.log("Login exitoso. Token JWT persistido en el dispositivo.");
+        // 2. Guardamos el rol (convertimos el booleano a string para SecureStore)
+        await SecureStore.setItemAsync('isAdmin', String(data.is_admin));
         
-        Alert.alert("¡Éxito!", `Bienvenido al sistema, ${username}`);
+        // 3. Guardamos el nombre de usuario para mostrarlo en el perfil
+        await SecureStore.setItemAsync('userName', data.username);
+
+        console.log(`Login exitoso como: ${data.is_admin ? 'Admin' : 'Empleado'}`);
         
-        // 4. NAVEGACIÓN: Reemplazamos la pantalla actual por el Módulo de Direcciones
-        // Usamos replace para que el usuario no pueda "regresar" al login con el botón físico de atrás
+        const mensajeBienvenida = data.is_admin 
+          ? `Bienvenido Administrador, ${data.username}` 
+          : `Bienvenido al sistema, ${data.username}`;
+
+        Alert.alert("¡Éxito!", mensajeBienvenida);
+        
+        // Redirigimos a las pestañas principales
         router.replace('/(tabs)'); 
       } else {
-        // Error 401 o credenciales inválidas
-        Alert.alert("Error de acceso", "Usuario o contraseña incorrectos. Verifica tus credenciales de Django.");
+        Alert.alert("Error de acceso", "Usuario o contraseña incorrectos.");
       }
     } catch (error) {
       console.error("Error de red:", error);
-      Alert.alert(
-        "Sin conexión", 
-        "No se pudo conectar con el servidor Django.\n\n1. Revisa que tu PC y Celular estén en el mismo Wi-Fi.\n2. Verifica que ALLOWED_HOSTS incluya tu IP en settings.py."
-      );
+      Alert.alert("Sin conexión", "No se pudo conectar con el servidor Django.");
     } finally {
       setLoading(false);
     }
@@ -133,94 +136,18 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: { 
-    flexGrow: 1, 
-    justifyContent: 'center', 
-    padding: 20 
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  brandTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#007AFF',
-    letterSpacing: 2,
-  },
-  appTitle: {
-    fontSize: 34,
-    fontWeight: '900',
-    color: '#212529',
-    marginTop: 5,
-  },
-  divider: {
-    width: 50,
-    height: 4,
-    backgroundColor: '#007AFF',
-    marginTop: 10,
-    borderRadius: 2,
-  },
-  card: {
-    backgroundColor: '#fff',
-    padding: 30,
-    borderRadius: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-    elevation: 8,
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#343a40',
-    marginBottom: 25,
-    textAlign: 'center',
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#495057',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#f1f3f5',
-    padding: 16,
-    borderRadius: 15,
-    fontSize: 16,
-    color: '#212529',
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 18,
-    borderRadius: 15,
-    alignItems: 'center',
-    marginTop: 10,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    backgroundColor: '#a2c8f5',
-  },
-  buttonText: { 
-    color: '#fff', 
-    fontSize: 18, 
-    fontWeight: 'bold' 
-  },
-  footer: {
-    textAlign: 'center',
-    color: '#adb5bd',
-    fontSize: 12,
-    marginTop: 40,
-    fontWeight: '500'
-  }
+  scrollContainer: { flexGrow: 1, justifyContent: 'center', padding: 20 },
+  header: { alignItems: 'center', marginBottom: 40 },
+  brandTitle: { fontSize: 18, fontWeight: 'bold', color: '#007AFF', letterSpacing: 2 },
+  appTitle: { fontSize: 34, fontWeight: '900', color: '#212529', marginTop: 5 },
+  divider: { width: 50, height: 4, backgroundColor: '#007AFF', marginTop: 10, borderRadius: 2 },
+  card: { backgroundColor: '#fff', padding: 30, borderRadius: 25, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 15, elevation: 8 },
+  cardTitle: { fontSize: 22, fontWeight: '700', color: '#343a40', marginBottom: 25, textAlign: 'center' },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 14, fontWeight: '600', color: '#495057', marginBottom: 8 },
+  input: { backgroundColor: '#f1f3f5', padding: 16, borderRadius: 15, fontSize: 16, color: '#212529', borderWidth: 1, borderColor: '#dee2e6' },
+  button: { backgroundColor: '#007AFF', padding: 18, borderRadius: 15, alignItems: 'center', marginTop: 10, shadowColor: '#007AFF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  buttonDisabled: { backgroundColor: '#a2c8f5' },
+  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  footer: { textAlign: 'center', color: '#adb5bd', fontSize: 12, marginTop: 40, fontWeight: '500' }
 });
