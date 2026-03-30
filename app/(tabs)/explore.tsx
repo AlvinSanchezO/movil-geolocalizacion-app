@@ -37,7 +37,6 @@ export default function ExploreScreen() {
               
               router.replace('/login');
             } catch (error) {
-              // Usamos 'error' en el log para que ESLint esté feliz
               console.error("Error al cerrar sesión:", error);
               Alert.alert("Error", "No se pudo cerrar la sesión correctamente.");
             }
@@ -59,19 +58,30 @@ export default function ExploreScreen() {
         {isAdmin ? "Panel de Administración" : "Perfil de Empleado"}
       </Text>
 
-      {/* --- SECCIÓN DINÁMICA: AHORA TE LLEVA A LA LISTA --- */}
+      {/* --- SECCIÓN DINÁMICA: FUNCIONES DE ADMIN --- */}
       {isAdmin && (
         <View style={styles.adminCard}>
           <View style={styles.adminHeader}>
             <Ionicons name="shield-checkmark" size={24} color="#084298" />
             <Text style={styles.adminTitle}>Funciones de Control</Text>
           </View>
+          
+          {/* Botón 1: Lista Textual */}
           <TouchableOpacity 
             style={styles.adminButton} 
             onPress={() => router.push('/admin/lista_empleados')}
           >
             <Ionicons name="people" size={20} color="#fff" style={{ marginRight: 10 }} />
             <Text style={styles.buttonText}>Ver Lista de Empleados</Text>
+          </TouchableOpacity>
+
+          {/* Botón 2: Mapa en Tiempo Real */}
+          <TouchableOpacity 
+            style={[styles.adminButton, { marginTop: 12, backgroundColor: '#198754' }]} 
+            onPress={() => router.push('/admin/mapa_monitoreo' as any)}
+          >
+            <Ionicons name="map" size={20} color="#fff" style={{ marginRight: 10 }} />
+            <Text style={styles.buttonText}>Monitoreo en Mapa</Text>
           </TouchableOpacity>
         </View>
       )}
