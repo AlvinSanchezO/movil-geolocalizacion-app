@@ -9,13 +9,12 @@ export default function ExploreScreen() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [nombreUsuario, setNombreUsuario] = useState('');
 
-  // Al cargar la pantalla, revisamos los datos guardados en el login
   useEffect(() => {
     const cargarDatosSesion = async () => {
       const adminStatus = await SecureStore.getItemAsync('isAdmin');
       const nombre = await SecureStore.getItemAsync('userName');
       
-      setIsAdmin(adminStatus === 'true'); // Convertimos el string a booleano
+      setIsAdmin(adminStatus === 'true');
       setNombreUsuario(nombre || 'Usuario');
     };
     cargarDatosSesion();
@@ -32,13 +31,14 @@ export default function ExploreScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // BORRAMOS TODO EL RASTRO DE LA SESIÓN
               await SecureStore.deleteItemAsync('userToken');
               await SecureStore.deleteItemAsync('isAdmin');
               await SecureStore.deleteItemAsync('userName');
               
               router.replace('/login');
             } catch (error) {
+              // Usamos 'error' en el log para que ESLint esté feliz
+              console.error("Error al cerrar sesión:", error);
               Alert.alert("Error", "No se pudo cerrar la sesión correctamente.");
             }
           }
@@ -49,13 +49,17 @@ export default function ExploreScreen() {
 
   return (
     <View style={styles.container}>
-      <Ionicons name="person-circle-outline" size={80} color={isAdmin ? "#28a745" : "#007AFF"} />
+      <Ionicons 
+        name="person-circle-outline" 
+        size={80} 
+        color={isAdmin ? "#28a745" : "#007AFF"} 
+      />
       <Text style={styles.title}>{nombreUsuario}</Text>
       <Text style={styles.subtitle}>
         {isAdmin ? "Panel de Administración" : "Perfil de Empleado"}
       </Text>
 
-      {/* --- SECCIÓN DINÁMICA: SOLO PARA ADMINS --- */}
+      {/* --- SECCIÓN DINÁMICA: AHORA TE LLEVA A LA LISTA --- */}
       {isAdmin && (
         <View style={styles.adminCard}>
           <View style={styles.adminHeader}>
@@ -64,7 +68,7 @@ export default function ExploreScreen() {
           </View>
           <TouchableOpacity 
             style={styles.adminButton} 
-            onPress={() => Alert.alert("Próximamente", "Aquí verás el mapa con todos los empleados en tiempo real.")}
+            onPress={() => router.push('/admin/lista_empleados')}
           >
             <Ionicons name="people" size={20} color="#fff" style={{ marginRight: 10 }} />
             <Text style={styles.buttonText}>Ver Lista de Empleados</Text>
@@ -94,8 +98,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa', alignItems: 'center', justifyContent: 'center', padding: 20 },
   title: { fontSize: 26, fontWeight: 'bold', color: '#212529', marginTop: 10 },
   subtitle: { fontSize: 16, color: '#6c757d', marginBottom: 30 },
-  
-  // Estilos para el Panel de Admin
   adminCard: {
     backgroundColor: '#cfe2ff',
     padding: 20,
@@ -115,10 +117,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   infoCard: { backgroundColor: '#fff', padding: 15, borderRadius: 12, width: '100%', marginBottom: 30, borderWidth: 1, borderColor: '#dee2e6' },
   infoText: { color: '#495057', textAlign: 'center', fontWeight: '500' },
-  
   logoutButton: {
     flexDirection: 'row',
     backgroundColor: '#dc3545',
