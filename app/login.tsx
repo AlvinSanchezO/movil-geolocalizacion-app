@@ -43,26 +43,28 @@ export default function LoginScreen() {
       const data = await response.json();
 
       if (response.ok) {
-        // --- NUEVA LÓGICA DE ROLES ---
+        // --- LÓGICA DE ROLES Y NOMBRE REAL ---
         
-        // 1. Guardamos el Token de acceso
+        // 1. Guardamos el Token de acceso para futuras peticiones
         await SecureStore.setItemAsync('userToken', data.access);
         
-        // 2. Guardamos el rol (convertimos el booleano a string para SecureStore)
+        // 2. Guardamos el rol (booleano a string) para saber si mostrar el panel Admin
         await SecureStore.setItemAsync('isAdmin', String(data.is_admin));
         
-        // 3. Guardamos el nombre de usuario para mostrarlo en el perfil
-        await SecureStore.setItemAsync('userName', data.username);
+        // 3. CAMBIO CLAVE: Guardamos el nombre real obtenido del modelo Empleado
+        // Ahora usamos 'data.nombre_real' en lugar de 'data.username'
+        await SecureStore.setItemAsync('userName', data.nombre_real);
 
         console.log(`Login exitoso como: ${data.is_admin ? 'Admin' : 'Empleado'}`);
         
+        // Personalizamos el saludo con el nombre real
         const mensajeBienvenida = data.is_admin 
-          ? `Bienvenido Administrador, ${data.username}` 
-          : `Bienvenido al sistema, ${data.username}`;
+          ? `Bienvenido Administrador, ${data.nombre_real}` 
+          : `Bienvenido al sistema, ${data.nombre_real}`;
 
         Alert.alert("¡Éxito!", mensajeBienvenida);
         
-        // Redirigimos a las pestañas principales
+        // Redirigimos a las pestañas principales (Home/Explore)
         router.replace('/(tabs)'); 
       } else {
         Alert.alert("Error de acceso", "Usuario o contraseña incorrectos.");
