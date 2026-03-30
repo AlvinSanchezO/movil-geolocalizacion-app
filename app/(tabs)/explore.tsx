@@ -1,8 +1,8 @@
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'; // Iconos que ya vienen con Expo
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import { Ionicons } from '@expo/vector-icons'; // Iconos que ya vienen con Expo
+import React from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ExploreScreen() {
   const router = useRouter();

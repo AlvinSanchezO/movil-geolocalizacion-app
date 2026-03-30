@@ -1,14 +1,22 @@
 import * as Location from 'expo-location';
-import * as SecureStore from 'expo-secure-store'; // IMPORTANTE: Para leer el token
+import * as SecureStore from 'expo-secure-store';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker } from 'react-native-maps'; // 1. Importamos el Mapa
 
 export default function HomeScreen() {
   const [latitud, setLatitud] = useState('');
   const [longitud, setLongitud] = useState('');
   const [cargando, setCargando] = useState(false);
+  
+  // Estado para controlar la región del mapa
+  const [region, setRegion] = useState({
+    latitude: 32.5149, // Coordenadas iniciales (Tijuana)
+    longitude: -117.0382,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
 
-  // 1. Función para obtener la ubicación del GPS
   const obtenerUbicacionGPS = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
@@ -19,9 +27,21 @@ export default function HomeScreen() {
     setCargando(true);
     try {
       let location = await Location.getCurrentPositionAsync({});
-      setLatitud(location.coords.latitude.toString());
-      setLongitud(location.coords.longitude.toString());
-      Alert.alert("Éxito", "Coordenadas obtenidas del GPS");
+      const lat = location.coords.latitude;
+      const lon = location.coords.longitude;
+
+      setLatitud(lat.toString());
+      setLongitud(lon.toString());
+
+      // 2. Actualizamos el mapa para que se mueva a tu ubicación
+      setRegion({
+        latitude: lat,
+        longitude: lon,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      });
+
+      Alert.alert("Éxito", "Ubicación detectada visualmente");
     } catch (error) {
       Alert.alert("Error", "No se pudo obtener la ubicación");
     } finally {
@@ -29,20 +49,17 @@ export default function HomeScreen() {
     }
   };
 
-  // 2. Función para enviar al backend con SEGURIDAD JWT
   const enviarUbicacion = async () => {
     if (!latitud || !longitud) {
-      Alert.alert("Error", "Primero obtén o escribe las coordenadas");
+      Alert.alert("Error", "Primero obtén las coordenadas con el GPS");
       return;
     }
 
     setCargando(true);
     try {
-      // RECUPERAMOS EL TOKEN GUARDADO EN EL LOGIN
       const token = await SecureStore.getItemAsync('userToken');
-
       if (!token) {
-        Alert.alert("Error de sesión", "No se encontró un token válido. Por favor inicia sesión de nuevo.");
+        Alert.alert("Sesión inválida", "Por favor vuelve a loguearte.");
         return;
       }
 
@@ -50,10 +67,9 @@ export default function HomeScreen() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` // <--- AQUÍ ENVIAMOS LA LLAVE
+          'Authorization': `Bearer ${token}` 
         },
         body: JSON.stringify({
-          // Asegúrate de que el ID del empleado exista en tu BD
           empleado: "http://192.168.100.12:8000/api-cesar/empleados/1/", 
           latitud: latitud,
           longitud: longitud,
@@ -61,16 +77,14 @@ export default function HomeScreen() {
       });
 
       if (response.ok) {
-        Alert.alert("¡Enviado!", "Ubicación guardada de forma segura en el servidor");
+        Alert.alert("¡Enviado!", "Coordenadas guardadas en la base de datos.");
         setLatitud('');
         setLongitud('');
-      } else if (response.status === 401) {
-        Alert.alert("Sesión expirada", "Tu sesión ha caducado. Vuelve a loguearte.");
       } else {
-        Alert.alert("Error", "El servidor rechazó los datos (Verifica el ID del empleado)");
+        Alert.alert("Error", "El servidor no pudo procesar la solicitud.");
       }
     } catch (error) {
-      Alert.alert("Error de Conexión", "No se pudo contactar con Django. Revisa tu IP.");
+      Alert.alert("Error de Conexión", "Verifica que Django esté encendido.");
     } finally {
       setCargando(false);
     }
@@ -79,30 +93,31 @@ export default function HomeScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.titulo}>Módulo Direcciones</Text>
-      <Text style={styles.subtitulo}>Seguridad JWT Activa</Text>
+
+      {/* 3. VISTA DEL MAPA */}
+      <View style={styles.mapContainer}>
+        <MapView 
+          style={styles.map} 
+          region={region}
+          showsUserLocation={true}
+        >
+          {latitud !== '' && (
+            <Marker 
+              coordinate={{ latitude: parseFloat(latitud), longitude: parseFloat(longitud) }}
+              title="Tu ubicación actual"
+              description="Aquí se enviarán los datos"
+            />
+          )}
+        </MapView>
+      </View>
 
       <TouchableOpacity style={styles.botonGPS} onPress={obtenerUbicacionGPS}>
-        <Text style={styles.textoBoton}>Obtener Ubicación Real</Text>
+        <Text style={styles.textoBoton}>📍 Localizar en el Mapa</Text>
       </TouchableOpacity>
 
-      <View style={styles.inputContainer}>
-        <Text style={styles.label}>Latitud</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Esperando GPS..."
-          value={latitud}
-          onChangeText={setLatitud}
-          keyboardType="numeric"
-        />
-
-        <Text style={styles.label}>Longitud</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Esperando GPS..."
-          value={longitud}
-          onChangeText={setLongitud}
-          keyboardType="numeric"
-        />
+      <View style={styles.coordsBox}>
+        <Text style={styles.coordText}>Lat: {latitud || '---'}</Text>
+        <Text style={styles.coordText}>Lon: {longitud || '---'}</Text>
       </View>
 
       <TouchableOpacity 
@@ -110,24 +125,40 @@ export default function HomeScreen() {
         onPress={enviarUbicacion} 
         disabled={cargando}
       >
-        {cargando ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.textoBoton}>Enviar a Backend Seguro</Text>
-        )}
+        {cargando ? <ActivityIndicator color="#fff" /> : <Text style={styles.textoBoton}>Enviar Ubicación Confirmada</Text>}
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, backgroundColor: '#f8f9fa', alignItems: 'center', justifyContent: 'center', padding: 25 },
-  titulo: { fontSize: 28, fontWeight: 'bold', color: '#212529', marginBottom: 5 },
-  subtitulo: { fontSize: 14, color: '#28a745', marginBottom: 30, fontWeight: '600' },
-  inputContainer: { width: '100%', marginBottom: 20 },
-  label: { fontSize: 14, color: '#6c757d', marginBottom: 5, marginLeft: 5 },
-  input: { width: '100%', height: 55, backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 15, marginBottom: 15, borderWidth: 1, borderColor: '#dee2e6', fontSize: 16 },
-  botonGPS: { width: '100%', height: 55, backgroundColor: '#28a745', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 20, elevation: 3 },
-  boton: { width: '100%', height: 55, backgroundColor: '#007bff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 3 },
-  textoBoton: { color: '#fff', fontSize: 17, fontWeight: 'bold' }
+  container: { flexGrow: 1, backgroundColor: '#f8f9fa', padding: 20, alignItems: 'center' },
+  titulo: { fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 20, marginTop: 40 },
+  mapContainer: {
+    width: '100%',
+    height: 300,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 20,
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  coordsBox: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+    elevation: 2,
+  },
+  coordText: { fontSize: 14, fontWeight: '600', color: '#555' },
+  botonGPS: { width: '100%', height: 55, backgroundColor: '#28a745', borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
+  boton: { width: '100%', height: 55, backgroundColor: '#007bff', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  textoBoton: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });
