@@ -5,8 +5,9 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+// 1. Cambiamos el 'anchor' para que el punto de inicio sea el login
 export const unstable_settings = {
-  anchor: '(tabs)',
+  initialRouteName: 'login', 
 };
 
 export default function RootLayout() {
@@ -15,6 +16,10 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+        {/* 2. Ponemos el login arriba de todo en el Stack */}
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        
+        {/* Las demás rutas se quedan igual */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
